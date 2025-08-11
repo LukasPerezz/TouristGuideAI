@@ -1,0 +1,80 @@
+import { type NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+
+// Mock TTS service for development
+// In production, you would use ElevenLabs API or similar service
+async function mockTextToSpeech(text: string, voice = "en-US-Standard-A", language = "english"): Promise<Buffer> {
+  // Simulate API processing time
+  await new Promise((resolve) => setTimeout(resolve, 2000))
+
+  // For demo purposes, we'll create a simple audio buffer
+  // In production, this would be replaced with actual TTS API call
+  const mockAudioData = Buffer.from(`MOCK_AUDIO_DATA_${language}_${voice}_` + text.substring(0, 50))
+  return mockAudioData
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { script, siteId, siteName, voice = "en-US-Standard-A", language = "english" } = await request.json()
+
+    if (!script || !siteId) {
+      return NextResponse.json({ error: "Script and site ID are required" }, { status: 400 })
+    }
+
+    const supabase = createClient()
+
+    // Check if audio already exists in cache
+    const audioHash = Buffer.from(JSON.stringify({ script, voice, language })).toString("base64")
+
+    const { data: cachedAudio } = await supabase
+      .from("content_cache")
+      .select("content_data")
+      .eq("cultural_site_id", siteId)
+      .eq("content_type", "audio")
+      .eq("content_hash", audioHash)
+      .gt("expires_at", new Date().toISOString())
+      .single()
+
+    if (cachedAudio) {
+      const audioData = JSON.parse(cachedAudio.content_data)
+      return NextResponse.json({
+        success: true,
+        audioUrl: audioData.audioUrl,
+        duration: audioData.duration,
+        cached: true,
+      })
+    }
+
+    // Generate new audio
+    const audioBuffer = await mockTextToSpeech(script, voice, language)
+
+    // In a real implementation, you would upload to Vercel Blob here
+    // For now, we'll create a mock URL
+    const mockAudioUrl = `data:audio/wav;base64,${audioBuffer.toString("base64")}`
+
+    // Estimate duration (roughly 150 words per minute for speech)
+    const wordCount = script.split(" ").length
+    const estimatedDuration = Math.ceil((wordCount / 150) * 60) // in seconds
+
+    // Cache the audio data
+    await supabase.from("content_cache").insert({
+      cultural_site_id: siteId,
+      content_type: "audio",
+      content_hash: audioHash,
+      content_data: JSON.stringify({
+        audioUrl: mockAudioUrl,
+        duration: estimatedDuration,
+      }),
+    })
+
+    return NextResponse.json({
+      success: true,
+      audioUrl: mockAudioUrl,
+      duration: estimatedDuration,
+      cached: false,
+    })
+  } catch (error) {
+    console.error("Audio generation error:", error)
+    return NextResponse.json({ error: "Failed to generate audio" }, { status: 500 })
+  }
+}
