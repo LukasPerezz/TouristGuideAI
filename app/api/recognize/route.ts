@@ -1,5 +1,17 @@
 import { type NextRequest, NextResponse } from "next/server";
 import vision from '@google-cloud/vision';
+// Helper to get credentials from Vercel environment variables
+const getGCPCredentials = () => {
+  return process.env.GCP_PRIVATE_KEY
+    ? {
+        credentials: {
+          client_email: process.env.GCP_SERVICE_ACCOUNT_EMAIL,
+          private_key: process.env.GCP_PRIVATE_KEY,
+        },
+        projectId: process.env.GCP_PROJECT_ID,
+      }
+    : {};
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,15 +36,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unsupported Content-Type" }, { status: 415 });
     }
 
-    // Use Google Cloud Vision API for landmark detection
-    const credentials = process.env.GOOGLE_CLOUD_KEY
-      ? JSON.parse(process.env.GOOGLE_CLOUD_KEY)
-      : undefined;
-
-    const client = new vision.ImageAnnotatorClient({
-      credentials,
-      projectId: credentials?.project_id,
-    });
+  // Use Google Cloud Vision API for landmark detection
+  const client = new vision.ImageAnnotatorClient(getGCPCredentials());
     const [result] = await client.landmarkDetection({ image: { content: buffer } });
     const landmarks = result.landmarkAnnotations || [];
 
