@@ -37,6 +37,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [audioUrl, setAudioUrl] = useState<string | null>(null)
+  const [audioDuration, setAudioDuration] = useState<number>(0)
   const [isGeneratingContent, setIsGeneratingContent] = useState(false)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [language, setLanguage] = useState<"english" | "spanish">("english")
@@ -283,6 +284,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
             script: contentResult.script,
             siteId: recognitionResult.site.id,
             siteName: recognitionResult.site.name,
+            duration: duration, // Pass the selected duration
           }),
         });
 
@@ -299,6 +301,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
         
         if (audioResult.success) {
           setAudioUrl(audioResult.audioUrl);
+          setAudioDuration(audioResult.duration);
           console.log("Audio generated successfully:", audioResult.audioUrl);
         } else {
           console.error('Audio generation failed:', audioResult.error);
@@ -323,6 +326,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
     setRecognitionResult(null)
     setGeneratedContent(null)
     setAudioUrl(null)
+    setAudioDuration(0)
     setAnalysisMethod("primary")
     stopCamera()
   }
@@ -526,7 +530,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
                   <h4 className="font-semibold text-blue-800 mb-2">Generated Audio Guide</h4>
                   <p className="text-blue-700 text-sm mb-4">{generatedContent}</p>
 
-                  {audioUrl && <AudioPlayer src={audioUrl} title="Audio Guide" />}
+                  {audioUrl && <AudioPlayer src={audioUrl} title="Audio Guide" duration={audioDuration} />}
                 </div>
               )}
             </div>

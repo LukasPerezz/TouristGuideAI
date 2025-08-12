@@ -9,13 +9,14 @@ import { Play, Pause, RotateCcw, Volume2, Download } from "lucide-react"
 interface AudioPlayerProps {
   src: string // Changed from audioUrl to src for consistency
   title: string
+  duration?: number // Add optional duration prop
   onDownload?: () => void
 }
 
-export function AudioPlayer({ src, title, onDownload }: AudioPlayerProps) {
+export function AudioPlayer({ src, title, duration: propDuration, onDownload }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0) // Made duration dynamic
+  const [duration, setDuration] = useState(propDuration || 0) // Use prop duration as fallback
   const [volume, setVolume] = useState(1)
   const audioRef = useRef<HTMLAudioElement>(null)
 
@@ -25,7 +26,12 @@ export function AudioPlayer({ src, title, onDownload }: AudioPlayerProps) {
 
     const updateTime = () => setCurrentTime(audio.currentTime)
     const handleEnded = () => setIsPlaying(false)
-    const handleLoadedMetadata = () => setDuration(audio.duration) // Set duration when loaded
+    const handleLoadedMetadata = () => {
+      // Only update duration if the audio actually loaded and has a valid duration
+      if (audio.duration && isFinite(audio.duration) && audio.duration > 0) {
+        setDuration(audio.duration)
+      }
+    }
 
     audio.addEventListener("timeupdate", updateTime)
     audio.addEventListener("ended", handleEnded)
