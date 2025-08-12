@@ -38,37 +38,28 @@ export async function POST(request: NextRequest) {
     // Log buffer size for debugging
     console.log("Image buffer size:", buffer?.length, "bytes");
 
-  // Use Google Cloud Vision API for landmark detection
+  // Use Google Cloud Vision API for landmark and label detection
   const client = new vision.ImageAnnotatorClient(getGCPCredentials());
-    let result, landmarks;
-    try {
-      [result] = await client.landmarkDetection({ image: { content: buffer } });
-      landmarks = result.landmarkAnnotations || [];
-    } catch (apiError) {
-      console.error("Vision API error:", apiError);
-      return NextResponse.json({
-        success: false,
-        message: "Vision API error: " + (apiError instanceof Error ? apiError.message : String(apiError)),
-        confidence: 0,
-        recognition_details: {},
-        error_details: apiError,
-      }, { status: 500 });
-    }
+  let landmarkResult, labelResult;
+  let landmarks = [], labels = [];
+  try {
+    [landmarkResult] = await client.landmarkDetection({ image: { content: buffer } });
+    landmarks = landmarkResult.landmarkAnnotations || [];
+    [labelResult] = await client.labelDetection({ image: { content: buffer } });
+    labels = labelResult.labelAnnotations || [];
+  } catch (apiError) {
+    console.error("Vision API error:", apiError);
+    return NextResponse.json({
+      success: false,
+      message: "Vision API error: " + (apiError instanceof Error ? apiError.message : String(apiError)),
+      confidence: 0,
+      recognition_details: {},
+      error_details: apiError,
+    }, { status: 500 });
+  }
 
-    if (landmarks.length === 0) {
-      let reason = "No landmark detected. Try a different image.";
-      if (result && result.error) {
-        reason += ` (Vision API error: ${result.error.message})`;
-      }
-      return NextResponse.json({
-        success: false,
-        message: reason,
-        confidence: 0,
-        recognition_details: {},
-      });
-    }
-
-    // Use the top result
+  // Prefer landmark detection, fallback to label detection
+  if (landmarks.length > 0) {
     const landmark = landmarks[0];
     return NextResponse.json({
       success: true,
@@ -79,7 +70,26 @@ export async function POST(request: NextRequest) {
         boundingPoly: landmark.boundingPoly,
       },
       recognition_details: landmarks,
+      labels,
     });
+  } else if (labels.length > 0) {
+    // If no landmark, show top label
+    const label = labels[0];
+    const score = typeof label.score === "number" ? label.score : 0;
+    return NextResponse.json({
+      success: false,
+      message: `No landmark detected. Top label: ${label.description} (${Math.round(score * 100)}% confidence)`,
+      confidence: score,
+      recognition_details: labels,
+    });
+  } else {
+    return NextResponse.json({
+      success: false,
+      message: "No landmark or recognizable object detected. Try a different image.",
+      confidence: 0,
+      recognition_details: {},
+    });
+  }
   } catch (error) {
     console.error("Recognition error:", error);
     return NextResponse.json(
