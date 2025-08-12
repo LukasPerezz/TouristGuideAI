@@ -1,6 +1,6 @@
 "use client"
 import type React from "react"
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -43,10 +43,70 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const [language, setLanguage] = useState<"english" | "spanish">("english")
   const [duration, setDuration] = useState<1 | 3 | 5>(3)
   const [analysisMethod, setAnalysisMethod] = useState<"primary" | "secondary" | "tertiary">("primary")
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null)
+  const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Initialize speech synthesis
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      setSpeechSynthesis(window.speechSynthesis);
+    }
+  }, []);
+
+  // Function to speak the generated content using browser TTS
+  const speakContent = (text: string) => {
+    if (!speechSynthesis) {
+      alert('Speech synthesis not supported in this browser');
+      return;
+    }
+
+    // Stop any current speech
+    if (currentUtterance) {
+      speechSynthesis.cancel();
+    }
+
+    // Create new utterance
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language === 'spanish' ? 'es-ES' : 'en-US';
+    utterance.rate = 0.9; // Slightly slower for better comprehension
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    // Set up event handlers
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      console.log('Started speaking');
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      console.log('Finished speaking');
+    };
+
+    utterance.onerror = (event) => {
+      console.error('Speech synthesis error:', event);
+      setIsSpeaking(false);
+      alert('Error with speech synthesis');
+    };
+
+    // Store current utterance and start speaking
+    setCurrentUtterance(utterance);
+    speechSynthesis.speak(utterance);
+  };
+
+  // Function to stop speaking
+  const stopSpeaking = () => {
+    if (speechSynthesis && currentUtterance) {
+      speechSynthesis.cancel();
+      setIsSpeaking(false);
+      setCurrentUtterance(null);
+    }
+  };
 
   const submitFeedback = async (isCorrect: boolean) => {
     console.log("Submit feedback called with:", isCorrect);
@@ -274,43 +334,17 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
       
       if (contentResult.success) {
         setGeneratedContent(contentResult.script);
-        console.log("Content generated successfully, now generating audio...");
+        console.log("Content generated successfully, now using browser TTS...");
 
-        setIsGeneratingAudio(true);
-        const audioResponse = await fetch("/api/generate-audio", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            script: contentResult.script,
-            siteId: recognitionResult.site.id,
-            siteName: recognitionResult.site.name,
-            duration: duration, // Pass the selected duration
-          }),
-        });
-
-        console.log("Audio response status:", audioResponse.status);
+        // Use browser TTS instead of server-side audio generation
+        speakContent(contentResult.script);
         
-        if (!audioResponse.ok) {
-          const errorText = await audioResponse.text();
-          console.error("Audio generation failed:", errorText);
-          throw new Error(`Failed to generate audio: ${audioResponse.status} ${errorText}`);
-        }
-
-        const audioResult = await audioResponse.json();
-        console.log("Audio result:", audioResult);
+        // Set a mock audio URL for the player (since we're using browser TTS)
+        const mockAudioUrl = `data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT`;
+        setAudioUrl(mockAudioUrl);
+        setAudioDuration(duration * 60); // Convert minutes to seconds
         
-        if (audioResult.success) {
-          setAudioUrl(audioResult.audioUrl);
-          setAudioDuration(audioResult.duration);
-          console.log("Audio generated successfully:", {
-            audioUrl: audioResult.audioUrl,
-            duration: audioResult.duration,
-            urlLength: audioResult.audioUrl?.length
-          });
-        } else {
-          console.error('Audio generation failed:', audioResult.error);
-          throw new Error(`Audio generation failed: ${audioResult.error}`);
-        }
+        console.log("Browser TTS started for script");
       } else {
         console.error('Content generation failed:', contentResult.error);
         throw new Error(`Content generation failed: ${contentResult.error}`);
@@ -332,6 +366,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
     setAudioUrl(null)
     setAudioDuration(0)
     setAnalysisMethod("primary")
+    stopSpeaking() // Stop any ongoing speech
     stopCamera()
   }
 
@@ -534,6 +569,35 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
                   <h4 className="font-semibold text-blue-800 mb-2">Generated Audio Guide</h4>
                   <p className="text-blue-700 text-sm mb-4">{generatedContent}</p>
 
+                  {/* TTS Controls */}
+                  <div className="flex items-center gap-4 mb-4">
+                    <Button
+                      onClick={() => speakContent(generatedContent)}
+                      disabled={isSpeaking}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {isSpeaking ? "Speaking..." : "🔊 Play Audio Guide"}
+                    </Button>
+                    
+                    {isSpeaking && (
+                      <Button
+                        onClick={stopSpeaking}
+                        variant="outline"
+                        className="bg-red-50 hover:bg-red-100"
+                      >
+                        ⏹️ Stop
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Status indicator */}
+                  {isSpeaking && (
+                    <div className="text-sm text-green-600 mb-4">
+                      🔊 Currently reading the audio guide...
+                    </div>
+                  )}
+
+                  {/* Audio Player (for visual consistency) */}
                   {audioUrl && <AudioPlayer src={audioUrl} title="Audio Guide" duration={audioDuration} />}
                 </div>
               )}
