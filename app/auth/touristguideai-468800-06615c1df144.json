@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "touristguideai-468800",
+  "private_key_id": "06615c1df1446a063884255605f1a333c0cbcff3",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEuwIBADANBgkqhkiG9w0BAQEFAASCBKUwggShAgEAAoIBAQCXJVs+L9vBWeSc\nCOeGCEiXjyby6/LbLcSw9epJg6tymGOX0ST09z2821FAIPZ5s1hw5CIRETBWgIVt\ncJFPnSBv/Xdimg/6aYRHEI6uauFUGr+0J7tJLdTUdoH0xCBbG+PrO9+OP/Ikmjp6\npxUApPnRYBCF5gP4ssDh6rhs2VqLLVeTAgf7tub5vD1IFYdrTkX8P9MXX2xR48oH\n7lztFRMp2fEhtjRQy6eu+Mi4TOWMia23S+VrazS1pJhSbIV2zdHe7pGZoo0UIbYe\nCa+Fd3hVA1aXacbqqpMZCy1CTrLLciSGEJPKNAlAKfJjNUNydWOYA/wU3vc+sDYp\nOImuaj/BAgMBAAECgf8l2bkLzbhep0BUwvYX3qMvMS4zz1q2ALQtDKhrWInq3La0\nIi/7GJ9hWBr00ExpFbykKL1PQNq2DuFbEsGRCmxBH1xyWNp/f0Uc9syEaUecZEZ1\nuy1vmgaeXj8VKLhhmI5vLkNBwEnHWMgkRws/ahEVmdUJcxyzfzBGYx1kRNoj2Aha\ncQaLzPGd3oYOlkCV62Hlo7xYMhwFWE+sIDKF/r06Z+v7yb9UKDsUxL+7mt/zD2LT\natLOyuRh4wB+g6hAm8Tr358Ud4ndLiCI1PKUF79FovWb7nnDEPgKQMQbMc+gtQFh\nqoY7dhmKgymYIyPMMbqcqCJUAOlgTRh8vZ0J/YECgYEAz0FvEAKAc3usj1rskPWB\ndYGnycnv/3fP2w2FmePT6HY2iP/o/P+Oe8Ogeh2QrF7IYJFPadO3ju8bPXIcq5Ef\n6Tfr8jJaWA19MpANdR1KmSUSYL9Udt5ZK/obl1KT2tJ85vRw3A0+8cHH9MxmB7wv\nxki0h22tJ2RdAt9PtP9Z6IECgYEAurGjbNLJTZNlyI0Rw+s5kaIAQ8Qhrf/CHrPI\nLrFijzMXC/tHJYFp22qRU6ccYOSj8nJ0bjcXHY8EG6Xoy+q7nIm9Qe/R/2s4i+58\nFNR0MoXyaDp57UFfRKEjZdTu5ejJyDpGT0K5Pas7jfpwtVO6nuUS8y9JUA1i+Tv2\nh5Jit0ECgYAKw89M+ZRKa0YPPB3Febr7q3xXktGQZ1y4d/9UeuzqyhkTDJfBbFSu\nQP742MhG67Vkrqd9S63hErJLgr3Se3s41dq/fbYLlMfH9It+ZcMWKULHG6j7c5kW\nG6uLNJLRbtVl+ZRTGa0HSZVlNainBjNFDUmzLxMrVJ8wIwE02X6GAQKBgEkPYWQh\n7TNVnnxocG5abFIIss/SPlfogeAf/RQAyRA/LyK6ODJ+PZ3nS24QNLPaZipoDhZf\nqsUfhb0IJV0/xCHTaWQXZPfuztc8AgToy3xGHQIa+EIX1h92a/La7I6+ldCstX0p\nIHL4wrqiKl9bn+m0vcC7XZZdVsEwbR7K86TBAoGBAKhIpCTcOBSLVvtHDztguKoa\nUNYHp1Gz7oegeNrrT3vg52Mx8auxkIyvFowf4eu5dnPgt6HSNtBBiugu8ANBNu+W\n9SSbIaBaKEXg8WSHYOtL8QZWtZ5O6QoXxF3jx3BUvtZmGqTOjRBD6gjDbEAzF1gK\nePZayZKqvH+pE1qLW1D3\n-----END PRIVATE KEY-----\n",
+  "client_email": "agenteia@touristguideai-468800.iam.gserviceaccount.com",
+  "client_id": "117107488590980561624",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/agenteia%40touristguideai-468800.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

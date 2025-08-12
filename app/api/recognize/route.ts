@@ -25,7 +25,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Use Google Cloud Vision API for landmark detection
-    const client = new vision.ImageAnnotatorClient();
+    const credentials = process.env.GOOGLE_CLOUD_KEY
+      ? JSON.parse(process.env.GOOGLE_CLOUD_KEY)
+      : undefined;
+
+    const client = new vision.ImageAnnotatorClient({
+      credentials,
+      projectId: credentials?.project_id,
+    });
     const [result] = await client.landmarkDetection({ image: { content: buffer } });
     const landmarks = result.landmarkAnnotations || [];
 
