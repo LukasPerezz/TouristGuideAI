@@ -15,7 +15,7 @@ const getGCPCredentials = () => {
 
 export async function POST(request: NextRequest) {
   try {
-    let buffer: Buffer | null = null;
+  let buffer: Buffer | null = null;
     const contentType = request.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const body = await request.json();
@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
     } else {
       return NextResponse.json({ error: "Unsupported Content-Type" }, { status: 415 });
     }
+    // Log buffer size for debugging
+    console.log("Image buffer size:", buffer?.length, "bytes");
 
   // Use Google Cloud Vision API for landmark detection
   const client = new vision.ImageAnnotatorClient(getGCPCredentials());
@@ -43,11 +45,13 @@ export async function POST(request: NextRequest) {
       [result] = await client.landmarkDetection({ image: { content: buffer } });
       landmarks = result.landmarkAnnotations || [];
     } catch (apiError) {
+      console.error("Vision API error:", apiError);
       return NextResponse.json({
         success: false,
         message: "Vision API error: " + (apiError instanceof Error ? apiError.message : String(apiError)),
         confidence: 0,
         recognition_details: {},
+        error_details: apiError,
       }, { status: 500 });
     }
 
