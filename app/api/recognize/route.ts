@@ -52,12 +52,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (landmarks.length === 0) {
+      let reason = "No landmark detected. Try a different image.";
+      if (result && result.error) {
+        reason += ` (Vision API error: ${result.error.message})`;
+      }
       return NextResponse.json({
         success: false,
-        message: "No landmark detected. Try a different image.",
+        message: reason,
         confidence: 0,
         recognition_details: {},
-        api_raw_response: result,
       });
     }
 
