@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
         message: "No landmark detected. Try a different image.",
         confidence: 0,
         recognition_details: {},
+        api_raw_response: result,
       });
     }
 
