@@ -46,14 +46,35 @@ export function AudioPlayer({ src, title, duration: propDuration, onDownload }: 
 
   const togglePlayPause = () => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) {
+      console.error("Audio element not found");
+      return;
+    }
+
+    console.log("Toggle play/pause clicked");
+    console.log("Audio src:", audio.src);
+    console.log("Audio duration:", audio.duration);
+    console.log("Audio readyState:", audio.readyState);
+    console.log("Audio networkState:", audio.networkState);
 
     if (isPlaying) {
       audio.pause()
+      setIsPlaying(false)
     } else {
-      audio.play()
+      // Try to play the audio
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log("Audio started playing successfully");
+            setIsPlaying(true)
+          })
+          .catch((error) => {
+            console.error("Error playing audio:", error);
+            alert(`Failed to play audio: ${error.message}`);
+          })
+      }
     }
-    setIsPlaying(!isPlaying)
   }
 
   const handleSeek = (value: number[]) => {

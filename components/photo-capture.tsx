@@ -302,7 +302,11 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
         if (audioResult.success) {
           setAudioUrl(audioResult.audioUrl);
           setAudioDuration(audioResult.duration);
-          console.log("Audio generated successfully:", audioResult.audioUrl);
+          console.log("Audio generated successfully:", {
+            audioUrl: audioResult.audioUrl,
+            duration: audioResult.duration,
+            urlLength: audioResult.audioUrl?.length
+          });
         } else {
           console.error('Audio generation failed:', audioResult.error);
           throw new Error(`Audio generation failed: ${audioResult.error}`);

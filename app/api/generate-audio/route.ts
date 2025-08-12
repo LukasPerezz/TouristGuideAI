@@ -2,30 +2,45 @@ import { type NextRequest, NextResponse } from "next/server"
 
 // Mock TTS service for development
 // In production, you would use ElevenLabs API or similar service
-async function mockTextToSpeech(text: string, voice = "en-US-Standard-A", language = "english"): Promise<Buffer> {
+async function mockTextToSpeech(text: string, voice = "en-US-Standard-A", language = "english", durationMinutes = 1): Promise<Buffer> {
   try {
     // Simulate API processing time
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // For demo purposes, we'll create a simple audio buffer
-    // In production, this would be replaced with actual TTS API call
+    // Create a valid WAV file that browsers can play
+    // This generates a simple sine wave tone that's actually playable
     
-    // Create a longer audio buffer to simulate real audio duration
-    const baseAudioLength = Math.max(text.length * 2, 1000); // Minimum 1KB
-    const mockAudioData = Buffer.alloc(baseAudioLength);
+    const sampleRate = 44100;
+    const duration = durationMinutes * 60; // Convert minutes to seconds
+    const numSamples = sampleRate * duration;
     
-    // Fill the buffer with mock audio data
-    for (let i = 0; i < mockAudioData.length; i++) {
-      mockAudioData[i] = Math.floor(Math.random() * 256); // Random audio data
+    // WAV file header (44 bytes) + audio data
+    const buffer = Buffer.alloc(44 + numSamples * 2);
+    
+    // WAV header
+    buffer.write('RIFF', 0);
+    buffer.writeUInt32LE(36 + numSamples * 2, 4); // File size
+    buffer.write('WAVE', 8);
+    buffer.write('fmt ', 12);
+    buffer.writeUInt32LE(16, 16); // Chunk size
+    buffer.writeUInt16LE(1, 20); // Audio format (PCM)
+    buffer.writeUInt16LE(1, 22); // Number of channels (mono)
+    buffer.writeUInt32LE(sampleRate, 24); // Sample rate
+    buffer.writeUInt32LE(sampleRate * 2, 28); // Byte rate
+    buffer.writeUInt16LE(2, 32); // Block align
+    buffer.writeUInt16LE(16, 34); // Bits per sample
+    buffer.write('data', 36);
+    buffer.writeUInt32LE(numSamples * 2, 40); // Data chunk size
+    
+    // Generate simple sine wave audio (440Hz tone)
+    for (let i = 0; i < numSamples; i++) {
+      const sample = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.3;
+      const sampleValue = Math.floor(sample * 32767);
+      buffer.writeInt16LE(sampleValue, 44 + i * 2);
     }
     
-    // Ensure we have a valid buffer
-    if (!mockAudioData || mockAudioData.length === 0) {
-      throw new Error("Failed to generate mock audio buffer");
-    }
-    
-    console.log(`Generated mock audio buffer of size: ${mockAudioData.length} bytes`);
-    return mockAudioData
+    console.log(`Generated valid WAV audio buffer of size: ${buffer.length} bytes, duration: ${duration}s (${durationMinutes} minutes)`);
+    return buffer;
   } catch (error) {
     console.error("Mock TTS error:", error);
     // Return a fallback audio buffer
@@ -49,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     console.log("Generating audio with mock TTS...");
     // Generate new audio
-    const audioBuffer = await mockTextToSpeech(script, voice, language)
+    const audioBuffer = await mockTextToSpeech(script, voice, language, duration)
     console.log("Audio buffer generated, size:", audioBuffer.length);
 
     // Create a data URL that browsers can play
@@ -59,20 +74,19 @@ export async function POST(request: NextRequest) {
 
     // Calculate duration based on the selected duration parameter
     // The duration parameter represents minutes, so convert to seconds
-    const estimatedDuration = duration * 60; // Convert minutes to seconds
+    const selectedDurationSeconds = duration * 60; // Convert minutes to seconds
     
-    // Also calculate a word-based estimate as backup
-    const wordCount = script.split(" ").length
-    const wordBasedDuration = Math.ceil((wordCount / 150) * 60); // 150 words per minute
+    // For mock audio, we'll use the actual generated audio duration
+    // In production, this would come from the real TTS service
+    const mockAudioDuration = duration * 60; // Use the selected duration for mock audio
     
-    // Use the selected duration, but ensure it's reasonable
-    const finalDuration = Math.max(estimatedDuration, wordBasedDuration);
+    // Use the mock audio duration for now, but respect the selected duration for display
+    const finalDuration = Math.max(selectedDurationSeconds, mockAudioDuration);
     
     console.log("Duration calculation:", {
       selectedDuration: duration,
-      selectedDurationSeconds: estimatedDuration,
-      wordCount,
-      wordBasedDuration,
+      selectedDurationSeconds,
+      mockAudioDuration,
       finalDuration
     });
 
