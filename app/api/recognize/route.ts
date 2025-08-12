@@ -38,8 +38,18 @@ export async function POST(request: NextRequest) {
 
   // Use Google Cloud Vision API for landmark detection
   const client = new vision.ImageAnnotatorClient(getGCPCredentials());
-    const [result] = await client.landmarkDetection({ image: { content: buffer } });
-    const landmarks = result.landmarkAnnotations || [];
+    let result, landmarks;
+    try {
+      [result] = await client.landmarkDetection({ image: { content: buffer } });
+      landmarks = result.landmarkAnnotations || [];
+    } catch (apiError) {
+      return NextResponse.json({
+        success: false,
+        message: "Vision API error: " + (apiError instanceof Error ? apiError.message : String(apiError)),
+        confidence: 0,
+        recognition_details: {},
+      }, { status: 500 });
+    }
 
     if (landmarks.length === 0) {
       return NextResponse.json({
