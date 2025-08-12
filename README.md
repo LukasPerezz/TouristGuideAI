@@ -106,10 +106,45 @@ const MOCK_CULTURAL_SITES = {
 ### Replacing Mock TTS
 
 To use a real text-to-speech service, replace the `mockTextToSpeech` function in `app/api/generate-audio/route.ts` with calls to:
-- ElevenLabs API
-- Google Text-to-Speech
-- Amazon Polly
-- Microsoft Azure Speech Service
+
+- **ElevenLabs API** - High-quality, natural-sounding voices
+- **Google Text-to-Speech** - Good quality, multiple languages
+- **Amazon Polly** - AWS service with neural voices
+- **Microsoft Azure Speech Service** - High-quality neural voices
+- **OpenAI TTS** - Very natural-sounding voices
+
+#### Example: ElevenLabs Integration
+
+```typescript
+// Replace the mockTextToSpeech function with:
+async function generateElevenLabsAudio(text: string, voice = "en-US-Standard-A"): Promise<Buffer> {
+  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}`, {
+    method: 'POST',
+    headers: {
+      'Accept': 'audio/mpeg',
+      'Content-Type': 'application/json',
+      'xi-api-key': process.env.ELEVENLABS_API_KEY || '',
+    },
+    body: JSON.stringify({
+      text: text,
+      model_id: 'eleven_monolingual_v1',
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.5
+      }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`ElevenLabs API error: ${response.status}`);
+  }
+
+  const audioBuffer = await response.arrayBuffer();
+  return Buffer.from(audioBuffer);
+}
+```
+
+**Note**: The current mock TTS generates speech-like audio patterns for development purposes. For production, always use a real TTS service for natural human speech.
 
 ## Troubleshooting
 

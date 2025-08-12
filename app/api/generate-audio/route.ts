@@ -8,7 +8,7 @@ async function mockTextToSpeech(text: string, voice = "en-US-Standard-A", langua
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Create a valid WAV file that browsers can play
-    // This generates a simple sine wave tone that's actually playable
+    // This generates speech-like audio patterns instead of just a single tone
     
     const sampleRate = 44100;
     const duration = durationMinutes * 60; // Convert minutes to seconds
@@ -32,14 +32,40 @@ async function mockTextToSpeech(text: string, voice = "en-US-Standard-A", langua
     buffer.write('data', 36);
     buffer.writeUInt32LE(numSamples * 2, 40); // Data chunk size
     
-    // Generate simple sine wave audio (440Hz tone)
+    // Generate speech-like audio patterns
     for (let i = 0; i < numSamples; i++) {
-      const sample = Math.sin(2 * Math.PI * 440 * i / sampleRate) * 0.3;
-      const sampleValue = Math.floor(sample * 32767);
+      const time = i / sampleRate;
+      
+      // Create varying frequencies to simulate speech patterns
+      // Use multiple frequencies and vary them over time
+      const baseFreq = 150 + Math.sin(time * 0.5) * 50; // Varying base frequency
+      const highFreq = 800 + Math.sin(time * 1.2) * 200; // Higher frequency component
+      const lowFreq = 80 + Math.sin(time * 0.3) * 30; // Lower frequency component
+      
+      // Combine multiple frequencies to create more natural sound
+      const sample1 = Math.sin(2 * Math.PI * baseFreq * time) * 0.2;
+      const sample2 = Math.sin(2 * Math.PI * highFreq * time) * 0.1;
+      const sample3 = Math.sin(2 * Math.PI * lowFreq * time) * 0.15;
+      
+      // Add some randomness and variation
+      const noise = (Math.random() - 0.5) * 0.05;
+      
+      // Combine all components
+      const sample = sample1 + sample2 + sample3 + noise;
+      
+      // Add pauses to simulate speech patterns (every few seconds)
+      const pauseInterval = 3; // Pause every 3 seconds
+      const pauseDuration = 0.1; // 0.1 second pause
+      const inPause = (time % pauseInterval) < pauseDuration;
+      
+      // Apply pause and limit amplitude
+      const finalSample = inPause ? 0 : Math.max(-0.8, Math.min(0.8, sample));
+      
+      const sampleValue = Math.floor(finalSample * 32767);
       buffer.writeInt16LE(sampleValue, 44 + i * 2);
     }
     
-    console.log(`Generated valid WAV audio buffer of size: ${buffer.length} bytes, duration: ${duration}s (${durationMinutes} minutes)`);
+    console.log(`Generated speech-like WAV audio buffer of size: ${buffer.length} bytes, duration: ${duration}s (${durationMinutes} minutes)`);
     return buffer;
   } catch (error) {
     console.error("Mock TTS error:", error);
