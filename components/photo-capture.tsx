@@ -51,57 +51,119 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   // Initialize speech synthesis
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      setSpeechSynthesis(window.speechSynthesis);
+      const synth = window.speechSynthesis;
+      
+      // Check if speech synthesis is actually supported and working
+      try {
+        // Test if we can create an utterance
+        const testUtterance = new SpeechSynthesisUtterance('');
+        if (testUtterance && typeof synth.speak === 'function') {
+          setSpeechSynthesis(synth);
+          console.log('Speech synthesis initialized successfully');
+        } else {
+          console.warn('Speech synthesis not fully supported');
+        }
+      } catch (error) {
+        console.warn('Speech synthesis initialization failed:', error);
+      }
+    } else {
+      console.warn('Speech synthesis not supported in this browser');
     }
   }, []);
 
   // Function to stop speaking
   const stopSpeaking = () => {
-    if (speechSynthesis) {
-      speechSynthesis.cancel(); // Cancel all speech
+    try {
+      if (speechSynthesis) {
+        // Method 1: Try the standard cancel method
+        if ('cancel' in speechSynthesis && typeof speechSynthesis.cancel === 'function') {
+          speechSynthesis.cancel();
+          console.log('Speech stopped using cancel method');
+        }
+        
+        // Method 2: Try to pause and resume to stop (fallback)
+        if ('pause' in speechSynthesis && typeof speechSynthesis.pause === 'function') {
+          speechSynthesis.pause();
+          speechSynthesis.resume();
+          console.log('Speech stopped using pause/resume method');
+        }
+        
+        // Method 3: If we have a current utterance, try to stop it
+        if (currentUtterance && typeof currentUtterance === 'object' && 'cancel' in currentUtterance) {
+          try {
+            (currentUtterance as any).cancel();
+            console.log('Current utterance canceled');
+          } catch (utteranceError) {
+            console.warn('Could not cancel utterance:', utteranceError);
+          }
+        }
+        
+        // Always reset the state
+        setIsSpeaking(false);
+        setCurrentUtterance(null);
+        
+        console.log('Speech stopped successfully');
+      }
+    } catch (error) {
+      console.error('Error stopping speech:', error);
+      // Even if there's an error, reset the state
       setIsSpeaking(false);
       setCurrentUtterance(null);
-      console.log('Speech stopped');
     }
   };
 
   // Function to speak the generated content using browser TTS
   const speakContent = (text: string) => {
-    if (!speechSynthesis) {
-      alert('Speech synthesis not supported in this browser');
-      return;
+    try {
+      if (!speechSynthesis) {
+        alert('Speech synthesis not supported in this browser');
+        return;
+      }
+
+      // Stop any current speech first
+      stopSpeaking();
+
+      // Create new utterance
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language === 'spanish' ? 'es-ES' : 'en-US';
+      utterance.rate = 0.9; // Slightly slower for better comprehension
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      // Set up event handlers
+      utterance.onstart = () => {
+        setIsSpeaking(true);
+        console.log('Started speaking');
+      };
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        console.log('Finished speaking');
+      };
+
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        setIsSpeaking(false);
+        // Don't show alert for common errors like cancellation
+        if (event.error !== 'canceled') {
+          console.warn('Speech synthesis error (non-critical):', event.error);
+        }
+      };
+
+      // Store current utterance and start speaking
+      setCurrentUtterance(utterance);
+      
+      // Check if speech synthesis is available before speaking
+      if (speechSynthesis.speaking) {
+        speechSynthesis.cancel(); // Cancel any ongoing speech
+      }
+      
+      speechSynthesis.speak(utterance);
+    } catch (error) {
+      console.error('Error starting speech synthesis:', error);
+      setIsSpeaking(false);
+      alert('Error starting speech synthesis. Please try again.');
     }
-
-    // Stop any current speech first
-    stopSpeaking();
-
-    // Create new utterance
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language === 'spanish' ? 'es-ES' : 'en-US';
-    utterance.rate = 0.9; // Slightly slower for better comprehension
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
-
-    // Set up event handlers
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      console.log('Started speaking');
-    };
-
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      console.log('Finished speaking');
-    };
-
-    utterance.onerror = (event) => {
-      console.error('Speech synthesis error:', event);
-      setIsSpeaking(false);
-      alert('Error with speech synthesis');
-    };
-
-    // Store current utterance and start speaking
-    setCurrentUtterance(utterance);
-    speechSynthesis.speak(utterance);
   };
 
   const submitFeedback = async (isCorrect: boolean) => {
