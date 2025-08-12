@@ -1,3 +1,6 @@
+# Ignore environment variables and secrets
+.env
+app/auth/touristguideai-468800-06615c1df144.json
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
