@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-// import vision from '@google-cloud/vision';
+import vision from '@google-cloud/vision';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,12 +24,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unsupported Content-Type" }, { status: 415 });
     }
 
-    // TODO: Add your own image recognition logic here
+    // Use Google Cloud Vision API for landmark detection
+    const credentials = process.env.GOOGLE_CLOUD_KEY
+      ? JSON.parse(process.env.GOOGLE_CLOUD_KEY)
+      : undefined;
+
+    const client = new vision.ImageAnnotatorClient({
+      credentials,
+      projectId: credentials?.project_id,
+    });
+    const [result] = await client.landmarkDetection({ image: { content: buffer } });
+    const landmarks = result.landmarkAnnotations || [];
+
+    if (landmarks.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: "No landmark detected. Try a different image.",
+        confidence: 0,
+        recognition_details: {},
+      });
+    }
+
+    // Use the top result
+    const landmark = landmarks[0];
     return NextResponse.json({
-      success: false,
-      message: "Image recognition is not configured.",
-      confidence: 0,
-      recognition_details: {},
+      success: true,
+      landmark: {
+        description: landmark.description,
+        score: landmark.score,
+        locations: landmark.locations,
+        boundingPoly: landmark.boundingPoly,
+      },
+      recognition_details: landmarks,
     });
   } catch (error) {
     console.error("Recognition error:", error);
