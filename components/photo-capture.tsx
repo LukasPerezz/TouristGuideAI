@@ -36,16 +36,13 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
-  const [audioUrl, setAudioUrl] = useState<string | null>(null)
-  const [audioDuration, setAudioDuration] = useState<number>(0)
   const [isGeneratingContent, setIsGeneratingContent] = useState(false)
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
-  const [language, setLanguage] = useState<"english" | "spanish">("english")
-  const [duration, setDuration] = useState<1 | 3 | 5>(3)
-  const [analysisMethod, setAnalysisMethod] = useState<"primary" | "secondary" | "tertiary">("primary")
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null)
   const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null)
+  const [language, setLanguage] = useState<"english" | "spanish">("english")
+  const [duration, setDuration] = useState<1 | 3 | 5>(3)
+  const [analysisMethod, setAnalysisMethod] = useState<"primary" | "secondary" | "tertiary">("primary")
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -58,6 +55,16 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
     }
   }, []);
 
+  // Function to stop speaking
+  const stopSpeaking = () => {
+    if (speechSynthesis) {
+      speechSynthesis.cancel(); // Cancel all speech
+      setIsSpeaking(false);
+      setCurrentUtterance(null);
+      console.log('Speech stopped');
+    }
+  };
+
   // Function to speak the generated content using browser TTS
   const speakContent = (text: string) => {
     if (!speechSynthesis) {
@@ -65,10 +72,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
       return;
     }
 
-    // Stop any current speech
-    if (currentUtterance) {
-      speechSynthesis.cancel();
-    }
+    // Stop any current speech first
+    stopSpeaking();
 
     // Create new utterance
     const utterance = new SpeechSynthesisUtterance(text);
@@ -97,15 +102,6 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
     // Store current utterance and start speaking
     setCurrentUtterance(utterance);
     speechSynthesis.speak(utterance);
-  };
-
-  // Function to stop speaking
-  const stopSpeaking = () => {
-    if (speechSynthesis && currentUtterance) {
-      speechSynthesis.cancel();
-      setIsSpeaking(false);
-      setCurrentUtterance(null);
-    }
   };
 
   const submitFeedback = async (isCorrect: boolean) => {
@@ -240,7 +236,6 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
     setIsProcessing(true)
     setRecognitionResult(null)
     setGeneratedContent(null)
-    setAudioUrl(null)
 
     try {
       const response = await fetch("/api/recognize", {
@@ -341,8 +336,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
         
         // Set a mock audio URL for the player (since we're using browser TTS)
         const mockAudioUrl = `data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT`;
-        setAudioUrl(mockAudioUrl);
-        setAudioDuration(duration * 60); // Convert minutes to seconds
+        // setAudioUrl(mockAudioUrl); // No longer needed
+        // setAudioDuration(duration * 60); // No longer needed
         
         console.log("Browser TTS started for script");
       } else {
@@ -355,7 +350,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
       alert(`Failed to generate audio guide: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGeneratingContent(false);
-      setIsGeneratingAudio(false);
+      // setIsGeneratingAudio(false); // No longer needed
     }
   };
 
@@ -363,8 +358,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
     setCapturedImage(null)
     setRecognitionResult(null)
     setGeneratedContent(null)
-    setAudioUrl(null)
-    setAudioDuration(0)
+    // setAudioUrl(null) // No longer needed
+    // setAudioDuration(0) // No longer needed
     setAnalysisMethod("primary")
     stopSpeaking() // Stop any ongoing speech
     stopCamera()
@@ -544,10 +539,10 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
 
                       <Button
                         onClick={generateAudioGuide}
-                        disabled={isGeneratingContent || isGeneratingAudio}
+                        disabled={isGeneratingContent || isSpeaking}
                         className="w-full sm:w-auto"
                       >
-                        {isGeneratingContent || isGeneratingAudio
+                        {isGeneratingContent || isSpeaking
                           ? "Generating Audio Guide..."
                           : "Generate Audio Guide"}
                       </Button>
@@ -596,9 +591,6 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
                       🔊 Currently reading the audio guide...
                     </div>
                   )}
-
-                  {/* Audio Player (for visual consistency) */}
-                  {audioUrl && <AudioPlayer src={audioUrl} title="Audio Guide" duration={audioDuration} />}
                 </div>
               )}
             </div>
