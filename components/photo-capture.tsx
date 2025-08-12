@@ -37,9 +37,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [isGeneratingContent, setIsGeneratingContent] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [speechSynthesis, setSpeechSynthesis] = useState<SpeechSynthesis | null>(null)
-  const [currentUtterance, setCurrentUtterance] = useState<SpeechSynthesisUtterance | null>(null)
+  // Simple speech synthesis state
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [language, setLanguage] = useState<"english" | "spanish">("english")
   const [duration, setDuration] = useState<1 | 3 | 5>(3)
   const [analysisMethod, setAnalysisMethod] = useState<"primary" | "secondary" | "tertiary">("primary")
@@ -48,157 +47,65 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize speech synthesis
-  useEffect(() => {
-    console.log('Initializing speech synthesis...');
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      const synth = window.speechSynthesis;
-      console.log('Speech synthesis found in window:', !!synth);
-      
-      // Check if speech synthesis is actually supported and working
-      try {
-        // Test if we can create an utterance
-        const testUtterance = new SpeechSynthesisUtterance('');
-        console.log('Test utterance created:', !!testUtterance);
-        
-        if (testUtterance && typeof synth.speak === 'function') {
-          setSpeechSynthesis(synth);
-          console.log('Speech synthesis initialized successfully');
-        } else {
-          console.warn('Speech synthesis not fully supported');
-        }
-      } catch (error) {
-        console.warn('Speech synthesis initialization failed:', error);
-      }
-    } else {
-      console.warn('Speech synthesis not supported in this browser');
-    }
-  }, []);
-
-  // Function to stop speaking
-  const stopSpeaking = () => {
+  // Remove the complex speech synthesis initialization useEffect - no longer needed
+  
+  // Simple function to speak text
+  const speakText = (text: string) => {
     try {
-      if (speechSynthesis) {
-        // Method 1: Try the standard cancel method
-        if ('cancel' in speechSynthesis && typeof speechSynthesis.cancel === 'function') {
-          speechSynthesis.cancel();
-          console.log('Speech stopped using cancel method');
-        }
-        
-        // Method 2: Try to pause and resume to stop (fallback)
-        if ('pause' in speechSynthesis && typeof speechSynthesis.pause === 'function') {
-          speechSynthesis.pause();
-          speechSynthesis.resume();
-          console.log('Speech stopped using pause/resume method');
-        }
-        
-        // Method 3: If we have a current utterance, try to stop it
-        if (currentUtterance && typeof currentUtterance === 'object' && 'cancel' in currentUtterance) {
-          try {
-            (currentUtterance as any).cancel();
-            console.log('Current utterance canceled');
-          } catch (utteranceError) {
-            console.warn('Could not cancel utterance:', utteranceError);
-          }
-        }
-        
-        // Always reset the state
-        setIsSpeaking(false);
-        setCurrentUtterance(null);
-        
-        console.log('Speech stopped successfully');
-      }
-    } catch (error) {
-      console.error('Error stopping speech:', error);
-      // Even if there's an error, reset the state
-      setIsSpeaking(false);
-      setCurrentUtterance(null);
-    }
-  };
-
-  // Function to speak the generated content using browser TTS
-  const speakContent = (text: string) => {
-    console.log('=== SPEAK CONTENT DEBUG ===');
-    console.log('Function called with text:', text);
-    console.log('Text length:', text?.length);
-    console.log('Speech synthesis object:', speechSynthesis);
-    
-    try {
-      if (!speechSynthesis) {
-        console.error('Speech synthesis is null/undefined');
+      // Check if speech synthesis is available
+      if (!window.speechSynthesis) {
         alert('Speech synthesis not supported in this browser');
         return;
       }
 
-      console.log('Speech synthesis available, checking methods...');
-      console.log('speak method available:', typeof speechSynthesis.speak === 'function');
-      console.log('cancel method available:', typeof speechSynthesis.cancel === 'function');
-      console.log('pause method available:', typeof speechSynthesis.pause === 'function');
-      console.log('resume method available:', typeof speechSynthesis.resume === 'function');
-
-      // Stop any current speech first
-      console.log('Stopping any current speech...');
-      stopSpeaking();
-
-      // Create new utterance
-      console.log('Creating new utterance...');
-      const utterance = new SpeechSynthesisUtterance(text);
-      console.log('Utterance created:', utterance);
+      // Stop any current speech
+      window.speechSynthesis.cancel();
       
+      // Create new utterance
+      const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = language === 'spanish' ? 'es-ES' : 'en-US';
-      utterance.rate = 0.9; // Slightly slower for better comprehension
+      utterance.rate = 0.9;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
-      
-      console.log('Utterance configured:', {
-        lang: utterance.lang,
-        rate: utterance.rate,
-        pitch: utterance.pitch,
-        volume: utterance.volume
-      });
 
       // Set up event handlers
       utterance.onstart = () => {
-        console.log('Utterance started!');
         setIsSpeaking(true);
         console.log('Started speaking');
       };
 
       utterance.onend = () => {
-        console.log('Utterance ended!');
         setIsSpeaking(false);
         console.log('Finished speaking');
       };
 
       utterance.onerror = (event) => {
-        console.error('Utterance error event:', event);
-        console.error('Speech synthesis error:', event);
+        console.error('Speech error:', event);
         setIsSpeaking(false);
-        // Don't show alert for common errors like cancellation
-        if (event.error !== 'canceled') {
-          console.warn('Speech synthesis error (non-critical):', event.error);
-        }
       };
 
-      // Store current utterance and start speaking
-      console.log('Setting current utterance...');
-      setCurrentUtterance(utterance);
-      
-      // Check if speech synthesis is available before speaking
-      console.log('Checking if speech synthesis is speaking...');
-      if (speechSynthesis.speaking) {
-        console.log('Speech synthesis is currently speaking, canceling...');
-        speechSynthesis.cancel(); // Cancel any ongoing speech
-      }
-      
-      console.log('About to call speechSynthesis.speak...');
-      speechSynthesis.speak(utterance);
-      console.log('speak() called successfully!');
+      // Start speaking
+      window.speechSynthesis.speak(utterance);
+      console.log('Speech started');
       
     } catch (error) {
-      console.error('Error starting speech synthesis:', error);
+      console.error('Error starting speech:', error);
       setIsSpeaking(false);
-      alert('Error starting speech synthesis. Please try again.');
+      alert('Error starting speech synthesis');
+    }
+  };
+
+  // Simple function to stop speaking
+  const stopSpeaking = () => {
+    try {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        setIsSpeaking(false);
+        console.log('Speech stopped');
+      }
+    } catch (error) {
+      console.error('Error stopping speech:', error);
+      setIsSpeaking(false);
     }
   };
 
@@ -451,10 +358,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
     setCapturedImage(null)
     setRecognitionResult(null)
     setGeneratedContent(null)
-    // setAudioUrl(null) // No longer needed
-    // setAudioDuration(0) // No longer needed
     setAnalysisMethod("primary")
-    stopSpeaking() // Stop any ongoing speech
+    stopSpeaking() // Stop any ongoing speech using the simple function
     stopCamera()
   }
 
@@ -660,37 +565,7 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
                   {/* TTS Controls */}
                   <div className="flex items-center gap-4 mb-4">
                     <Button
-                      onClick={() => {
-                        console.log('=== PLAY BUTTON DEBUG ===');
-                        console.log('Button clicked!');
-                        console.log('Generated content:', generatedContent);
-                        console.log('Generated content type:', typeof generatedContent);
-                        console.log('Generated content length:', generatedContent?.length);
-                        console.log('Speech synthesis object:', speechSynthesis);
-                        console.log('Speech synthesis available:', !!speechSynthesis);
-                        console.log('Is speaking:', isSpeaking);
-                        console.log('Current utterance:', currentUtterance);
-                        
-                        if (!generatedContent) {
-                          console.error('No content to speak!');
-                          alert('No content available to speak. Please generate the audio guide first.');
-                          return;
-                        }
-                        
-                        if (!speechSynthesis) {
-                          console.error('Speech synthesis not available!');
-                          alert('Speech synthesis is not available in your browser. Please try a different browser.');
-                          return;
-                        }
-                        
-                        try {
-                          console.log('Attempting to speak content...');
-                          speakContent(generatedContent);
-                        } catch (error) {
-                          console.error('Error in play button click handler:', error);
-                          alert(`Error starting speech: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                        }
-                      }}
+                      onClick={() => speakText(generatedContent)}
                       disabled={isSpeaking || !generatedContent}
                       className="bg-green-600 hover:bg-green-700"
                     >
@@ -700,17 +575,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
                     {/* Test button to verify TTS is working */}
                     <Button
                       onClick={() => {
-                        console.log('=== TEST TTS BUTTON ===');
-                        if (speechSynthesis) {
-                          const testUtterance = new SpeechSynthesisUtterance('Hello, this is a test of speech synthesis.');
-                          testUtterance.onstart = () => console.log('Test utterance started');
-                          testUtterance.onend = () => console.log('Test utterance ended');
-                          testUtterance.onerror = (e) => console.error('Test utterance error:', e);
-                          speechSynthesis.speak(testUtterance);
-                          console.log('Test utterance sent to speech synthesis');
-                        } else {
-                          console.error('Speech synthesis not available for test');
-                        }
+                        console.log('Testing TTS...');
+                        speakText('Hello, this is a test of speech synthesis.');
                       }}
                       variant="outline"
                       size="sm"
