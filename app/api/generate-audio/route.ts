@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 
 // Mock TTS service for development
 // In production, you would use ElevenLabs API or similar service
@@ -18,31 +17,10 @@ export async function POST(request: NextRequest) {
     const { script, siteId, siteName, voice = "en-US-Standard-A", language = "english" } = await request.json()
 
     if (!script || !siteId) {
-      return NextResponse.json({ error: "Script and site ID are required" }, { status: 400 })
-    }
-
-    const supabase = createClient()
-
-    // Check if audio already exists in cache
-    const audioHash = Buffer.from(JSON.stringify({ script, voice, language })).toString("base64")
-
-    const { data: cachedAudio } = await supabase
-      .from("content_cache")
-      .select("content_data")
-      .eq("cultural_site_id", siteId)
-      .eq("content_type", "audio")
-      .eq("content_hash", audioHash)
-      .gt("expires_at", new Date().toISOString())
-      .single()
-
-    if (cachedAudio) {
-      const audioData = JSON.parse(cachedAudio.content_data)
-      return NextResponse.json({
-        success: true,
-        audioUrl: audioData.audioUrl,
-        duration: audioData.duration,
-        cached: true,
-      })
+      return NextResponse.json({ 
+        success: false,
+        error: "Script and site ID are required" 
+      }, { status: 400 })
     }
 
     // Generate new audio
@@ -56,17 +34,6 @@ export async function POST(request: NextRequest) {
     const wordCount = script.split(" ").length
     const estimatedDuration = Math.ceil((wordCount / 150) * 60) // in seconds
 
-    // Cache the audio data
-    await supabase.from("content_cache").insert({
-      cultural_site_id: siteId,
-      content_type: "audio",
-      content_hash: audioHash,
-      content_data: JSON.stringify({
-        audioUrl: mockAudioUrl,
-        duration: estimatedDuration,
-      }),
-    })
-
     return NextResponse.json({
       success: true,
       audioUrl: mockAudioUrl,
@@ -75,6 +42,9 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Audio generation error:", error)
-    return NextResponse.json({ error: "Failed to generate audio" }, { status: 500 })
+    return NextResponse.json({ 
+      success: false,
+      error: "Failed to generate audio" 
+    }, { status: 500 })
   }
 }

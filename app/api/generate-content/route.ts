@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 
 interface GenerateContentRequest {
   siteId: string
@@ -22,6 +21,7 @@ export async function POST(request: NextRequest) {
     const body: GenerateContentRequest = await request.json()
 
     const {
+      siteId,
       siteName,
       description,
       historicalContext,
@@ -36,31 +36,12 @@ export async function POST(request: NextRequest) {
       duration = 3,
     } = body
 
-    // Check cache first
-    const supabase = createClient()
-    const contentHash = Buffer.from(
-      JSON.stringify({
-        siteName,
-        language,
-        duration,
-        type: "audio_script",
-      }),
-    ).toString("base64")
-
-    const { data: cachedContent } = await supabase
-      .from("content_cache")
-      .select("content_data")
-      .eq("content_hash", contentHash)
-      .eq("content_type", "script")
-      .gt("expires_at", new Date().toISOString())
-      .single()
-
-    if (cachedContent) {
-      return NextResponse.json({
-        success: true,
-        script: JSON.parse(cachedContent.content_data).script,
-        cached: true,
-      })
+    // Validate required fields
+    if (!siteId || !siteName) {
+      return NextResponse.json({ 
+        success: false,
+        error: "Site ID and name are required" 
+      }, { status: 400 })
     }
 
     const isSpanish = language === "spanish"
@@ -68,26 +49,17 @@ export async function POST(request: NextRequest) {
     // Generate mock content based on site information and parameters
     const generatedScript = generateMockScript({
       siteName,
-      description,
-      historicalContext,
-      culturalSignificance,
-      locationCity,
-      locationCountry,
-      constructionDate,
-      architectArtist,
-      funFacts,
-      visitorTips,
+      description: description || "A remarkable cultural site",
+      historicalContext: historicalContext || "This site has a rich historical background",
+      culturalSignificance: culturalSignificance || "This site holds great cultural importance",
+      locationCity: locationCity || "Unknown city",
+      locationCountry: locationCountry || "Unknown country",
+      constructionDate: constructionDate || "Unknown date",
+      architectArtist: architectArtist || "Unknown",
+      funFacts: funFacts || ["This site has fascinated visitors for generations"],
+      visitorTips: visitorTips || "Take your time to explore and appreciate the site",
       isSpanish,
       duration,
-    })
-
-    // Cache the generated content
-    await supabase.from("content_cache").insert({
-      cultural_site_id: body.siteId,
-      content_type: "script",
-      content_hash: contentHash,
-      content_data: JSON.stringify({ script: generatedScript }),
-      language: isSpanish ? "es" : "en",
     })
 
     return NextResponse.json({
@@ -97,7 +69,10 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("Content generation error:", error)
-    return NextResponse.json({ error: "Failed to generate content" }, { status: 500 })
+    return NextResponse.json({ 
+      success: false,
+      error: "Failed to generate content" 
+    }, { status: 500 })
   }
 }
 

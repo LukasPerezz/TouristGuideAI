@@ -95,3 +95,6 @@ CREATE POLICY "Users can delete own favorites" ON user_favorites
 -- Content cache is publicly readable but only system can write
 CREATE POLICY "Content cache is publicly readable" ON content_cache
     FOR SELECT USING (true);
+
+CREATE POLICY "Content cache can be written by system" ON content_cache
+    FOR INSERT WITH CHECK (true);

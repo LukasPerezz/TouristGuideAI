@@ -8,6 +8,7 @@ import { Camera, Upload, X, RotateCcw, ThumbsUp, ThumbsDown } from "lucide-react
 import { AudioPlayer } from "@/components/audio-player"
 
 interface RecognitionResult {
+  success: boolean;
   site: {
     id: string
     name: string
@@ -24,9 +25,12 @@ interface User {
   id: string
 }
 
-const PhotoCapture: React.FC = () => {
+interface PhotoCaptureProps {
+  user?: User | null;
+}
+
+const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null)
-  const [user, setUser] = useState<User | null>(null)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [isCameraOpen, setIsCameraOpen] = useState(false)
@@ -160,11 +164,27 @@ const PhotoCapture: React.FC = () => {
         }),
       })
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json()
-      setRecognitionResult(result)
+      
+      if (result.success) {
+        setRecognitionResult(result)
+      } else {
+        // Handle unsuccessful recognition
+        setRecognitionResult({
+          success: false,
+          site: { id: "", name: "", location: "", description: "", historical_period: "", cultural_significance: "" },
+          message: result.message || "Recognition failed",
+          confidence: result.confidence || 0,
+        })
+      }
     } catch (error) {
       console.error("Error processing image:", error)
       setRecognitionResult({
+        success: false,
         site: { id: "", name: "", location: "", description: "", historical_period: "", cultural_significance: "" },
         message: "Error processing image. Please try again.",
         confidence: 0,
@@ -186,47 +206,69 @@ const PhotoCapture: React.FC = () => {
   }
 
   const generateAudioGuide = async () => {
-    if (!recognitionResult?.site) return
+    if (!recognitionResult?.site) return;
 
-    setIsGeneratingContent(true)
+    setIsGeneratingContent(true);
     try {
       const contentResponse = await fetch("/api/generate-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          siteInfo: recognitionResult.site,
+          siteId: recognitionResult.site.id,
+          siteName: recognitionResult.site.name,
+          description: recognitionResult.site.description,
+          historicalContext: recognitionResult.site.historical_period,
+          culturalSignificance: recognitionResult.site.cultural_significance,
+          locationCity: recognitionResult.site.location.split(', ')[0],
+          locationCountry: recognitionResult.site.location.split(', ')[1],
+          constructionDate: recognitionResult.site.historical_period,
+          architectArtist: "",
+          funFacts: [],
+          visitorTips: "",
           language,
           duration,
         }),
-      })
+      });
 
-      const contentResult = await contentResponse.json()
+      if (!contentResponse.ok) {
+        throw new Error('Failed to generate content');
+      }
+
+      const contentResult = await contentResponse.json();
       if (contentResult.success) {
-        setGeneratedContent(contentResult.content)
+        setGeneratedContent(contentResult.script);
 
-        setIsGeneratingAudio(true)
+        setIsGeneratingAudio(true);
         const audioResponse = await fetch("/api/generate-audio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: contentResult.content,
-            language,
+            script: contentResult.script,
             siteId: recognitionResult.site.id,
+            siteName: recognitionResult.site.name,
           }),
-        })
+        });
 
-        const audioResult = await audioResponse.json()
-        if (audioResult.success) {
-          setAudioUrl(audioResult.audioUrl)
+        if (!audioResponse.ok) {
+          throw new Error('Failed to generate audio');
         }
+
+        const audioResult = await audioResponse.json();
+        if (audioResult.success) {
+          setAudioUrl(audioResult.audioUrl);
+        } else {
+          console.error('Audio generation failed:', audioResult.error);
+        }
+      } else {
+        console.error('Content generation failed:', contentResult.error);
       }
     } catch (error) {
-      console.error("Error generating audio guide:", error)
+      console.error("Error generating audio guide:", error);
     } finally {
-      setIsGeneratingContent(false)
-      setIsGeneratingAudio(false)
+      setIsGeneratingContent(false);
+      setIsGeneratingAudio(false);
     }
-  }
+  };
 
   const reset = () => {
     setCapturedImage(null)
@@ -436,7 +478,7 @@ const PhotoCapture: React.FC = () => {
                   <h4 className="font-semibold text-blue-800 mb-2">Generated Audio Guide</h4>
                   <p className="text-blue-700 text-sm mb-4">{generatedContent}</p>
 
-                  {audioUrl && <AudioPlayer src={audioUrl} />}
+                  {audioUrl && <AudioPlayer src={audioUrl} title="Audio Guide" />}
                 </div>
               )}
             </div>
