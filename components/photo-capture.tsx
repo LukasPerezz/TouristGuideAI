@@ -50,13 +50,17 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
 
   // Initialize speech synthesis
   useEffect(() => {
+    console.log('Initializing speech synthesis...');
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       const synth = window.speechSynthesis;
+      console.log('Speech synthesis found in window:', !!synth);
       
       // Check if speech synthesis is actually supported and working
       try {
         // Test if we can create an utterance
         const testUtterance = new SpeechSynthesisUtterance('');
+        console.log('Test utterance created:', !!testUtterance);
+        
         if (testUtterance && typeof synth.speak === 'function') {
           setSpeechSynthesis(synth);
           console.log('Speech synthesis initialized successfully');
@@ -391,17 +395,12 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
       
       if (contentResult.success) {
         setGeneratedContent(contentResult.script);
-        console.log("Content generated successfully, now using browser TTS...");
-
-        // Use browser TTS instead of server-side audio generation
-        speakContent(contentResult.script);
+        console.log("Content generated successfully, ready for TTS playback");
         
-        // Set a mock audio URL for the player (since we're using browser TTS)
-        const mockAudioUrl = `data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT`;
-        // setAudioUrl(mockAudioUrl); // No longer needed
-        // setAudioDuration(duration * 60); // No longer needed
+        // Don't automatically start TTS - let user click the play button
+        // speakContent(contentResult.script); // Removed automatic TTS
         
-        console.log("Browser TTS started for script");
+        console.log("Content ready for audio playback");
       } else {
         console.error('Content generation failed:', contentResult.error);
         throw new Error(`Content generation failed: ${contentResult.error}`);
@@ -629,7 +628,11 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
                   {/* TTS Controls */}
                   <div className="flex items-center gap-4 mb-4">
                     <Button
-                      onClick={() => speakContent(generatedContent)}
+                      onClick={() => {
+                        console.log('Play button clicked, content:', generatedContent);
+                        console.log('Speech synthesis available:', !!speechSynthesis);
+                        speakContent(generatedContent);
+                      }}
                       disabled={isSpeaking}
                       className="bg-green-600 hover:bg-green-700"
                     >
