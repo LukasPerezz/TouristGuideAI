@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
     const landmark = landmarks[0];
     return NextResponse.json({
       success: true,
+      message: `Detected landmark: ${landmark.description} (${Math.round((landmark.score || 0) * 100)}% confidence)`,
       landmark: {
         description: landmark.description,
         score: landmark.score,
@@ -106,7 +107,10 @@ export async function POST(request: NextRequest) {
         boundingPoly: landmark.boundingPoly,
       },
       recognition_details: landmarks,
-      labels,
+      labels: labels.map(label => ({
+        description: label.description,
+        score: label.score
+      })),
     });
   } else if (labels.length > 0) {
     // If no landmark, show top label
@@ -116,7 +120,10 @@ export async function POST(request: NextRequest) {
       success: false,
       message: `No landmark detected. Top label: ${label.description} (${Math.round(score * 100)}% confidence)`,
       confidence: score,
-      recognition_details: labels,
+      recognition_details: labels.map(label => ({
+        description: label.description,
+        score: label.score
+      })),
     });
   } else {
     return NextResponse.json({
