@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import vision from '@google-cloud/vision';
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 // Helper to get credentials from Vercel environment variables
 const getGCPCredentials = () => {
   return process.env.GCP_PRIVATE_KEY
@@ -97,9 +98,79 @@ export async function POST(request: NextRequest) {
   // Prefer landmark detection, fallback to label detection
   if (landmarks.length > 0) {
     const landmark = landmarks[0];
+    
+    // Get site information from database based on landmark
+    const supabase = createClient();
+    
+    // Make sure Supabase is configured
+    if (!isSupabaseConfigured) {
+      return NextResponse.json({
+        success: false,
+        message: "Database configuration not available",
+        confidence: 0,
+      });
+    }
+    
+    // Use type assertion since we know the client is properly configured
+    const { data: siteData } = await (supabase as any)
+      .from('cultural_sites')
+      .select('*')
+      .ilike('name', `%${landmark.description}%`)
+      .single();
+
+    if (!siteData) {
+      return NextResponse.json({
+        success: false,
+        message: "Site information not found in database",
+        confidence: 0,
+      });
+    }
+
+    // Generate content first
+    const contentResponse = await fetch(`${request.nextUrl.origin}/api/generate-content`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        siteId: siteData.id,
+        siteName: siteData.name,
+        description: siteData.description,
+        historicalContext: siteData.historical_context,
+        culturalSignificance: siteData.cultural_significance,
+        locationCity: siteData.location_city,
+        locationCountry: siteData.location_country,
+        constructionDate: siteData.construction_date,
+        architectArtist: siteData.architect_artist,
+        funFacts: siteData.fun_facts || [],
+        visitorTips: siteData.visitor_tips,
+      }),
+    });
+
+    if (!contentResponse.ok) {
+      throw new Error('Failed to generate content');
+    }
+
+    const contentData = await contentResponse.json();
+
+    // Generate audio
+    const audioResponse = await fetch(`${request.nextUrl.origin}/api/generate-audio`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        script: contentData.script,
+        siteId: siteData.id,
+        siteName: siteData.name,
+      }),
+    });
+
+    if (!audioResponse.ok) {
+      throw new Error('Failed to generate audio');
+    }
+
+    const audioData = await audioResponse.json();
+
     return NextResponse.json({
       success: true,
-      message: `Detected landmark: ${landmark.description} (${Math.round((landmark.score || 0) * 100)}% confidence)`,
+      message: `Generated audio guide for ${landmark.description} (${Math.round((landmark.score || 0) * 100)}% confidence)`,
       landmark: {
         description: landmark.description,
         score: landmark.score,
@@ -111,6 +182,11 @@ export async function POST(request: NextRequest) {
         description: label.description,
         score: label.score
       })),
+      content: contentData,
+      audio: {
+        url: audioData.audioUrl,
+        duration: audioData.duration
+      }
     });
   } else if (labels.length > 0) {
     // If no landmark, show top label
