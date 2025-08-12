@@ -1,36 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
     const { isCorrect, siteId, recognizedSiteId, imageData, confidence } = await request.json()
 
-    const supabase = createClient()
-
-    // Get current user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-    }
-
-    // Store feedback in database
-    const { error: insertError } = await supabase.from("recognition_feedback").insert({
-      user_id: user.id,
-      actual_site_id: siteId,
-      recognized_site_id: recognizedSiteId,
-      is_correct: isCorrect,
-      confidence_score: confidence,
-      image_hash: imageData ? btoa(imageData.substring(0, 100)) : null,
-      created_at: new Date().toISOString(),
+    // For now, we'll just log the feedback since we don't have a database
+    // In production, you could send this to an analytics service or store it
+    console.log("Feedback received:", {
+      isCorrect,
+      siteId,
+      recognizedSiteId,
+      confidence,
+      timestamp: new Date().toISOString()
     })
 
-    if (insertError) {
-      console.error("Error storing feedback:", insertError)
-      return NextResponse.json({ error: "Failed to store feedback" }, { status: 500 })
-    }
+    // You could also store feedback in localStorage on the client side
+    // or send it to an external service like Google Analytics, Mixpanel, etc.
 
     return NextResponse.json({
       success: true,

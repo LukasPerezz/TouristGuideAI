@@ -18,7 +18,9 @@ interface GenerateContentRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("Generate content API called");
     const body: GenerateContentRequest = await request.json()
+    console.log("Request body:", body);
 
     const {
       siteId,
@@ -38,11 +40,14 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!siteId || !siteName) {
+      console.error("Missing required fields:", { siteId, siteName });
       return NextResponse.json({ 
         success: false,
         error: "Site ID and name are required" 
       }, { status: 400 })
     }
+
+    console.log("Generating script with parameters:", { siteName, language, duration });
 
     const isSpanish = language === "spanish"
 
@@ -61,6 +66,8 @@ export async function POST(request: NextRequest) {
       isSpanish,
       duration,
     })
+
+    console.log("Script generated successfully, length:", generatedScript.length);
 
     return NextResponse.json({
       success: true,

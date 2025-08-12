@@ -48,9 +48,16 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const submitFeedback = async (isCorrect: boolean) => {
-    if (!recognitionResult?.site || !user) return
+    console.log("Submit feedback called with:", isCorrect);
+    console.log("Recognition result:", recognitionResult);
+    
+    if (!recognitionResult?.site) {
+      console.error("No recognition result or site available");
+      return;
+    }
 
     try {
+      console.log("Sending feedback to API...");
       const response = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,9 +68,12 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
           confidence: recognitionResult.confidence,
           imageData: capturedImage,
         }),
-      })
+      });
 
-      const result = await response.json()
+      console.log("Feedback API response status:", response.status);
+      const result = await response.json();
+      console.log("Feedback API response:", result);
+      
       if (result.success) {
         const originalMessage = recognitionResult.message
         setRecognitionResult({
@@ -79,9 +89,26 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
             })
           }
         }, 2000)
+      } else {
+        console.error("Feedback submission failed:", result.error)
       }
     } catch (error) {
       console.error("Error submitting feedback:", error)
+      // Show user-friendly error message
+      const originalMessage = recognitionResult.message
+      setRecognitionResult({
+        ...recognitionResult,
+        message: "Feedback submission failed. Please try again.",
+      })
+
+      setTimeout(() => {
+        if (recognitionResult) {
+          setRecognitionResult({
+            ...recognitionResult,
+            message: originalMessage,
+          })
+        }
+      }, 2000)
     }
   }
 
@@ -208,8 +235,11 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
   const generateAudioGuide = async () => {
     if (!recognitionResult?.site) return;
 
+    console.log("Starting audio guide generation for site:", recognitionResult.site);
     setIsGeneratingContent(true);
+    
     try {
+      console.log("Generating content...");
       const contentResponse = await fetch("/api/generate-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -219,8 +249,8 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
           description: recognitionResult.site.description,
           historicalContext: recognitionResult.site.historical_period,
           culturalSignificance: recognitionResult.site.cultural_significance,
-          locationCity: recognitionResult.site.location.split(', ')[0],
-          locationCountry: recognitionResult.site.location.split(', ')[1],
+          locationCity: recognitionResult.site.location.includes(',') ? recognitionResult.site.location.split(', ')[0] : recognitionResult.site.location,
+          locationCountry: recognitionResult.site.location.includes(',') ? recognitionResult.site.location.split(', ')[1] : "Unknown",
           constructionDate: recognitionResult.site.historical_period,
           architectArtist: "",
           funFacts: [],
@@ -230,13 +260,20 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
         }),
       });
 
+      console.log("Content response status:", contentResponse.status);
+      
       if (!contentResponse.ok) {
-        throw new Error('Failed to generate content');
+        const errorText = await contentResponse.text();
+        console.error("Content generation failed:", errorText);
+        throw new Error(`Failed to generate content: ${contentResponse.status} ${errorText}`);
       }
 
       const contentResult = await contentResponse.json();
+      console.log("Content result:", contentResult);
+      
       if (contentResult.success) {
         setGeneratedContent(contentResult.script);
+        console.log("Content generated successfully, now generating audio...");
 
         setIsGeneratingAudio(true);
         const audioResponse = await fetch("/api/generate-audio", {
@@ -249,21 +286,32 @@ const PhotoCapture: React.FC<PhotoCaptureProps> = ({ user }) => {
           }),
         });
 
+        console.log("Audio response status:", audioResponse.status);
+        
         if (!audioResponse.ok) {
-          throw new Error('Failed to generate audio');
+          const errorText = await audioResponse.text();
+          console.error("Audio generation failed:", errorText);
+          throw new Error(`Failed to generate audio: ${audioResponse.status} ${errorText}`);
         }
 
         const audioResult = await audioResponse.json();
+        console.log("Audio result:", audioResult);
+        
         if (audioResult.success) {
           setAudioUrl(audioResult.audioUrl);
+          console.log("Audio generated successfully:", audioResult.audioUrl);
         } else {
           console.error('Audio generation failed:', audioResult.error);
+          throw new Error(`Audio generation failed: ${audioResult.error}`);
         }
       } else {
         console.error('Content generation failed:', contentResult.error);
+        throw new Error(`Content generation failed: ${contentResult.error}`);
       }
     } catch (error) {
       console.error("Error generating audio guide:", error);
+      // Show user-friendly error message
+      alert(`Failed to generate audio guide: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGeneratingContent(false);
       setIsGeneratingAudio(false);
